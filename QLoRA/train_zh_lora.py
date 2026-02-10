@@ -90,13 +90,13 @@ args = TrainingArguments(
 )
 
 def formatting_func(example):
-  return example["text"]
+    return example["text"]
 
 trainer = SFTTrainer(
-  model=model,
-  train_dataset=ds,
-  formatting_func=formatting_func,
-  args=args,
+    model=model,
+    train_dataset=ds,
+    formatting_func=formatting_func,
+    args=args,
 )
 
 trainer.train()
