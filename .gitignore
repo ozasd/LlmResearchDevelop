@@ -1,0 +1,27 @@
+# ===== LLM / Training =====
+checkpoint-*
+*.pt
+*.bin
+*.ckpt
+
+# ===== Conda / Env =====
+Miniconda*
+conda/
+.env/
+venv/
+
+# ===== Cache =====
+__pycache__/
+.cache/
+.ipynb_checkpoints/
+
+# ===== Datasets =====
+data/
+datasets/
+
+# ===== HuggingFace =====
+hf_cache/
+
+# ===== env =====
+*.env
+

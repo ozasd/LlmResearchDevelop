@@ -4,13 +4,23 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model
 from trl import SFTTrainer
 from peft import prepare_model_for_kbit_training
+from huggingface_hub import login
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+hf_token = os.getenv("HF_TOKEN")
+
+login(hf_token)  # 貼上 token
+
 
 MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
 OUT_DIR = "./llama3_zh_lora"
 
-MAX_LEN = 384          # 3050 Ti 先用 512
+MAX_LEN = 256          # 3050 Ti 先用 512
 BATCH_SIZE = 1
-GRAD_ACC = 8          # 等效 batch=8
+GRAD_ACC = 4          # 等效 batch=8
 EPOCHS = 1            # 先跑 1 epoch 驗證流程
 
 # =====================
@@ -42,7 +52,7 @@ if tokenizer.pad_token is None:
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     quantization_config=bnb,
-    device_map={"": 0}   # 強制全部上 GPU
+    device_map={"": 0},   # 強制全部上 GPU
 )
 
 model.gradient_checkpointing_enable()
@@ -53,8 +63,8 @@ model = prepare_model_for_kbit_training(model)
 # 3) LoRA 設定
 # =====================
 lora_cfg = LoraConfig(
-    r=16,
-    lora_alpha=32,
+    r=8,
+    lora_alpha=16,
     lora_dropout=0.05,
     bias="none",
     task_type="CAUSAL_LM",
@@ -72,19 +82,21 @@ args = TrainingArguments(
     gradient_accumulation_steps=GRAD_ACC,
     num_train_epochs=EPOCHS,
     learning_rate=2e-4,
-    fp16=True,
+    fp16=False,
+    bf16=False,
     logging_steps=10,
     save_strategy="epoch",
     report_to="none",
 )
 
+def formatting_func(example):
+  return example["text"]
+
 trainer = SFTTrainer(
-    model=model,
-    tokenizer=tokenizer,
-    train_dataset=ds,
-    dataset_text_field="text",
-    max_seq_length=MAX_LEN,
-    args=args,
+  model=model,
+  train_dataset=ds,
+  formatting_func=formatting_func,
+  args=args,
 )
 
 trainer.train()
