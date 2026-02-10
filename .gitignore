@@ -25,3 +25,7 @@ hf_cache/
 # ===== env =====
 *.env
 
+# ===== LLaMA / GGUF =====
+*.gguf
+merge_results/
+*.safetensors
