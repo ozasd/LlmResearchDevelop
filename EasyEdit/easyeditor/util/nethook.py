@@ -67,8 +67,10 @@ class Trace(contextlib.AbstractContextManager):
         self.layer = layer
         if layer is not None:
             module = get_module(module, layer)
+        # def retain_hook(m, inputs, output, kwargs=None): 舊版
+        # def retain_hook(m, inputs, output): 拔參數
 
-        def retain_hook(m, inputs, output, kwargs=None):
+        def retain_hook(m, inputs, kwargs, output):
             if retain_input:
                 # Try to get input from positional args first
                 if len(inputs) > 0:
