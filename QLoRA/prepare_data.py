@@ -13,3 +13,4 @@ texts = [format_example(x) for x in ds]
 print("樣本數:", len(texts))
 print("第一筆:")
 print(texts[0])
+
