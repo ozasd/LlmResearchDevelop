@@ -29,4 +29,5 @@ hf_cache/
 *.gguf
 merge_results/
 *.safetensors
-*.safetensors
+*.bin
+*.pth
