@@ -7,6 +7,8 @@ fine-tune 研究
 # 2. EasyEdit
 LLM 開腦手術
 
+refer # https://huggingface.tw/blog/xzwnlp/easyedit-zh
+
 EasyEdit Experiment: Llama-3.2-3B Model Surgery
 Project Goal: 使用 ROME 演算法對 Llama-3.2-3B 進行「腦部手術」，將台灣總統的知識實體修改為自定義人物「周佑陞」。
 
