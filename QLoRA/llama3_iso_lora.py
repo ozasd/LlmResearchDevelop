@@ -6,7 +6,7 @@ from peft import PeftModel
 # =========================
 # 你要改的地方
 # =========================
-BASE_MODEL_ID = "meta-llama/Llama-3.2-3B-Instruct"   # 你原生模型
+BASE_MODEL_ID = "meta-llama/Meta-Llama-3.2-3B-Instruct"   # 你原生模型
 LORA_DIR      = r"./llama3_iso_lora"                  # 你的 LoRA 資料夾
 QUESTION      = "什麼是 ISO 27001 變更管理？"          # 同一題拿來比較
 
@@ -82,7 +82,8 @@ def main():
     base = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL_ID,
         quantization_config=bnb,
-        device_map={"": 0} if torch.cuda.is_available() else "auto",
+        # device_map={"": 0} if torch.cuda.is_available() else "auto",
+        device_map="cpu"
     )
     base.eval()
 

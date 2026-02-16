@@ -16,11 +16,18 @@ MODEL_ID  = "meta-llama/Llama-3.2-3B-Instruct"
 DATA_PATH = "./ISO27001.json"
 OUT_DIR   = "./llama3_iso_lora"
 
-MAX_LEN    = 256
+# MAX_LEN    = 256
+# BATCH_SIZE = 1
+# GRAD_ACC   = 4
+# EPOCHS     = 1
+# LR         = 2e-4
+# SEED       = 42
+
+MAX_LEN    = 384
 BATCH_SIZE = 1
-GRAD_ACC   = 4
-EPOCHS     = 1
-LR         = 2e-4
+GRAD_ACC   = 8
+EPOCHS     = 5
+LR         = 1e-4
 SEED       = 42
 
 # ============================================================
