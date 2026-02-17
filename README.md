@@ -1,27 +1,22 @@
 ﻿# LLM Research Demo
 
-本專案整理兩條 LLM 研究路線：`QLoRA`（domain fine-tuning）與 `EasyEdit`（knowledge editing）。  
-This repository contains two LLM research tracks: `QLoRA` (domain fine-tuning) and `EasyEdit` (knowledge editing).
+本專案整理兩條 LLM 研究路線：`QLoRA`（領域微調）與 `EasyEdit`（知識編輯）。
 
-## 目錄 | Table of Contents
-- [專案總覽 | Project Overview](#專案總覽--project-overview)
-- [Repository 結構 | Repository Structure](#repository-結構--repository-structure)
-- [QLoRA 研究路線 | QLoRA Track](#qlora-研究路線--qlora-track)
-- [EasyEdit 研究路線 | EasyEdit Track](#easyedit-研究路線--easyedit-track)
+## 目錄
+- [專案總覽](#專案總覽)
+- [Repository 結構](#repository-結構)
+- [QLoRA 研究路線](#qlora-研究路線)
+- [EasyEdit 研究路線](#easyedit-研究路線)
 - [Known Issues / TODO](#known-issues--todo)
 - [FAQ](#faq)
-- [授權與致謝 | License and Acknowledgements](#授權與致謝--license-and-acknowledgements)
 
-## 專案總覽 | Project Overview
-這個 repo 的核心是比較「先訓練」與「後編輯」兩種模型能力調整方式。`QLoRA` 用低成本 fine-tuning 讓模型學習特定領域任務；`EasyEdit` 用參數編輯方法對既有知識做局部修補。  
-This repo focuses on two adaptation styles: training-first and editing-after. `QLoRA` uses low-cost fine-tuning for domain adaptation, while `EasyEdit` performs localized model edits on existing knowledge.
+## 專案總覽
+這個 repo 的核心是比較「先訓練」與「後編輯」兩種模型能力調整方式。`QLoRA` 用低成本微調讓模型學習特定領域任務；`EasyEdit` 用參數編輯方法對既有知識做局部修補。
 
-`QLoRA` 目前以兩個場景為主：ISO 27001 資安知識與甜點客服回覆。`EasyEdit` 目前以 ROME 等編輯流程驗證 Llama-3.2-3B 的可控知識修改。  
-`QLoRA` currently targets two scenarios: ISO 27001 security knowledge and dessert customer service responses. `EasyEdit` currently validates controllable knowledge edits (such as ROME) on Llama-3.2-3B.
+`QLoRA` 目前以兩個場景為主：ISO 27001 資安知識與甜點客服回覆。`EasyEdit` 目前以 ROME 等編輯流程驗證 Llama-3.2-3B 的可控知識修改。
 
-## Repository 結構 | Repository Structure
-以下為主要研究檔案，省略大型第三方與非核心資產。  
-The following lists key research assets and omits large third-party/non-core assets.
+## Repository 結構
+以下為主要研究檔案，省略大型第三方與非核心資產。
 
 ```text
 LLM_research/
@@ -46,162 +41,116 @@ LLM_research/
    └─ hparams/
 ```
 
-## QLoRA 研究路線 | QLoRA Track
-QLoRA 路線用 4-bit quantization + LoRA adapter 進行 domain fine-tuning，重點是降低訓練成本並保留基礎模型泛化能力。  
-The QLoRA track uses 4-bit quantization plus LoRA adapters for domain fine-tuning, with focus on reducing training cost while preserving base-model generalization.
+## QLoRA 研究路線
+QLoRA 路線用 4-bit quantization + LoRA adapter 進行領域微調，重點是降低訓練成本並保留基礎模型泛化能力。
 
-### 研究目的 | Research Goals
-- ISO 27001：建立可回覆資安制度與控管問題的 assistant。  
-  ISO 27001: build an assistant that answers security governance and control-related questions.
-- 客服場景：建立可回覆甜點門市/訂購相關問題的 assistant。  
-  Customer service: build an assistant for dessert shop and ordering-related support.
-- 以一般語料混合降低 catastrophic forgetting。  
-  Mitigate catastrophic forgetting through mixed general-domain data.
+### 研究目的
+- ISO 27001：建立可回覆資安制度與控管問題的 assistant。
+- 客服場景：建立可回覆甜點門市/訂購相關問題的 assistant。
+- 以一般語料混合降低 catastrophic forgetting。
 
-### 核心腳本 | Core Scripts
-| 檔案 File | 用途 Purpose | 主要輸入 Main Inputs | 主要輸出 Main Outputs |
+### 核心腳本
+| 檔案 | 用途 | 主要輸入 | 主要輸出 |
 |---|---|---|---|
-| `QLoRA/train.py` | 通用訓練入口，內含 config 切換 ISO/客服 | JSON domain data + base model + optional general data | LoRA adapter 目錄與 quick check 輸出 |
+| `QLoRA/train.py` | 通用訓練入口，內含 config 切換 ISO/客服 | JSON 領域資料 + base model + 可選通用資料 | LoRA adapter 目錄與 quick check 輸出 |
 | `QLoRA/train_iso.py` | ISO 專用訓練流程 | `ISO27001.json` | `llama3_iso_lora/` |
 | `QLoRA/train_cs.py` | 客服專用訓練流程 | `customerService.json` | `llama3_cs_lora/` |
 | `QLoRA/prepare_data.py` | 載入並格式化一般語料供混訓 | external general dataset | `text` 欄位 dataset |
 | `QLoRA/llama3_iso_lora.py` | 比較 base 與 ISO LoRA 推論 | base model + `llama3_iso_lora/` | 對照式生成結果 |
 | `QLoRA/llama3_cs_lora .py` | LoRA 推論測試腳本（目前路徑名含空白） | base model + LoRA adapter | 單題生成結果 |
 
-### 資料格式契約 | Data Format Contract
-資料樣本採三欄：`instruction`, `input`, `output`。  
-Each data sample has three fields: `instruction`, `input`, `output`.
+### 資料格式契約
+資料樣本採三欄：`instruction`、`input`、`output`。
 
-訓練時會轉換成單一 `text` 欄位，主要使用 `instruction + output`（或 `instruction + input + output` 變體）形成 supervised target。  
-During training, samples are converted into a single `text` field, primarily using `instruction + output` (or `instruction + input + output` variants) as supervised targets.
+訓練時會轉換成單一 `text` 欄位，主要使用 `instruction + output`（或 `instruction + input + output` 變體）形成 supervised target。
 
-### 訓練流程規格 | Training Flow Specification
-1. 載入 domain JSON dataset。  
-   Load domain JSON dataset.
-2. 格式化成 instruction-answer prompt template。  
-   Format samples into an instruction-answer prompt template.
-3. 依 `mix_ratio` 混入 general-domain dataset。  
-   Mix general-domain dataset based on `mix_ratio`.
-4. 以 4-bit QLoRA 載入 base model 並掛 LoRA target modules。  
-   Load base model in 4-bit QLoRA mode and attach LoRA target modules.
-5. tokenization、Trainer 訓練、儲存 adapter/tokenizer。  
-   Tokenize, train with Trainer, then save adapter/tokenizer.
-6. 以 quick generation check 做最小驗證。  
-   Run quick generation checks as minimal validation.
+### 訓練流程規格
+1. 載入 domain JSON dataset。
+2. 格式化成 instruction-answer prompt template。
+3. 依 `mix_ratio` 混入 general-domain dataset。
+4. 以 4-bit QLoRA 載入 base model 並掛 LoRA target modules。
+5. tokenization、Trainer 訓練、儲存 adapter/tokenizer。
+6. 以 quick generation check 做最小驗證。
 
-### 主要超參數 | Key Hyperparameters
-| 參數 Parameter | 說明 Description |
+### 主要超參數
+| 參數 | 說明 |
 |---|---|
-| `epochs` | 訓練回合數 / Number of training epochs |
-| `batch_size` | 每卡 batch size / Per-device batch size |
-| `grad_acc` | 梯度累積步數 / Gradient accumulation steps |
-| `lr` | 學習率 / Learning rate |
-| `max_len` | 輸入最大 token 長度 / Max sequence length |
-| `mix_ratio` | 一般語料混合比例 / General-data mixing ratio |
-| `repetition_penalty` | 生成重複抑制 / Repetition control in generation |
+| `epochs` | 訓練回合數 |
+| `batch_size` | 每卡 batch size |
+| `grad_acc` | 梯度累積步數 |
+| `lr` | 學習率 |
+| `max_len` | 輸入最大 token 長度 |
+| `mix_ratio` | 一般語料混合比例 |
+| `repetition_penalty` | 生成重複抑制 |
 
-### 產物與輸出 | Artifacts and Outputs
-- `QLoRA/llama3_iso_lora/`: ISO domain LoRA adapter 輸出。  
-  ISO-domain LoRA adapter output.
-- `QLoRA/llama3_cs_lora/`: 客服 domain LoRA adapter 輸出。  
-  Customer-service LoRA adapter output.
+### 產物與輸出
+- `QLoRA/llama3_iso_lora/`：ISO domain LoRA adapter 輸出。
+- `QLoRA/llama3_cs_lora/`：客服 domain LoRA adapter 輸出。
 
-### 使用方式（通用流程）| Usage (Tool-Agnostic Workflow)
-1. 準備隔離 Python 環境並安裝相依套件。  
-   Prepare an isolated Python environment and install dependencies.
-2. 設定 Hugging Face 權限（例如 token 與模型存取）。  
-   Configure Hugging Face access (for example token and model permissions).
-3. 確認資料 JSON 與訓練 config 對應。  
-   Ensure dataset JSON and training config are aligned.
-4. 執行對應訓練腳本產生 LoRA adapter。  
-   Run the corresponding training script to produce LoRA adapters.
-5. 透過推論腳本進行 domain 問題快速驗證。  
-   Use inference scripts for quick domain-question checks.
+### 使用方式（通用流程）
+1. 準備隔離 Python 環境並安裝相依套件。
+2. 設定 Hugging Face 權限（例如 token 與模型存取）。
+3. 確認資料 JSON 與訓練 config 對應。
+4. 執行對應訓練腳本產生 LoRA adapter。
+5. 透過推論腳本進行 domain 問題快速驗證。
 
-## EasyEdit 研究路線 | EasyEdit Track
-EasyEdit 路線用於「不重訓整個模型」前提下進行知識修補與模型編輯。  
-The EasyEdit track is for knowledge repair/model editing without fully retraining the model.
+## EasyEdit 研究路線
+EasyEdit 路線用於「不重訓整個模型」前提下進行知識修補與模型編輯。
 
-### 目標與用途 | Goals and Use Cases
-研究重點是以 ROME/其他編輯方法在局部知識層級調整模型輸出，觀察可控性與副作用。  
-The focus is applying ROME/other editing methods to localized knowledge and analyzing controllability versus side effects.
+### 目標與用途
+研究重點是以 ROME/其他編輯方法在局部知識層級調整模型輸出，觀察可控性與副作用。
 
-### Repo 內入口 | Entry Points in This Repo
-- `EasyEdit/README.md`: 官方化說明與整體架構入口。  
-  Main documentation and framework overview.
-- `EasyEdit/test_rome.py`: ROME 測試入口。  
-  ROME test entry script.
-- `EasyEdit/hparams/...`: 各模型/方法對應的設定檔。  
-  Method/model-specific hyperparameter configs.
+### Repo 內入口
+- `EasyEdit/README.md`：官方化說明與整體架構入口。
+- `EasyEdit/test_rome.py`：ROME 測試入口。
+- `EasyEdit/hparams/...`：各模型/方法對應的設定檔。
 
-### 最小上手流程（通用）| Minimal Getting-Started Flow (Generic)
-1. 準備環境並安裝 `EasyEdit` 所需依賴。  
-   Prepare environment and install required `EasyEdit` dependencies.
-2. 依模型與方法挑選 `hparams` 設定檔。  
-   Select a matching `hparams` file by model and method.
-3. 執行測試或編輯腳本，觀察 edit 前後輸出差異。  
-   Run test/edit scripts and compare outputs before and after editing.
+### 最小上手流程（通用）
+1. 準備環境並安裝 `EasyEdit` 所需依賴。
+2. 依模型與方法挑選 `hparams` 設定檔。
+3. 執行測試或編輯腳本，觀察 edit 前後輸出差異。
 
-### 與 QLoRA 的關係 | Relationship with QLoRA
-`QLoRA` 主要是 fine-tuning（新增任務能力），`EasyEdit` 主要是 editing（局部知識修補）。兩者可互補：先 fine-tuning，再用 editing 做精修。  
-`QLoRA` is mainly fine-tuning (adding task capability), while `EasyEdit` is mainly editing (localized knowledge fixes). They can be complementary: fine-tune first, then edit for targeted adjustments.
+### 與 QLoRA 的關係
+`QLoRA` 主要是 fine-tuning（新增任務能力），`EasyEdit` 主要是 editing（局部知識修補）。兩者可互補：先 fine-tuning，再用 editing 做精修。
 
 ## Known Issues / TODO
 ### QLoRA
-1. `QLoRA/train_cs.py` 測試輸出段落使用未定義變數 `config`。  
-   `QLoRA/train_cs.py` references undefined variable `config` in test output section.  
-   影響 Impact: 腳本在該段落可能拋錯，導致流程中斷。  
-   建議 Suggested Fix: 改為既有常數變數或建立一致的 config 物件。
+1. `QLoRA/train_cs.py` 測試輸出段落使用未定義變數 `config`。
+   影響：腳本在該段落可能拋錯，導致流程中斷。
+   建議：改為既有常數變數或建立一致的 config 物件。
 
-2. `QLoRA/llama3_cs_lora .py` 檔名含空白。  
-   `QLoRA/llama3_cs_lora .py` contains a whitespace in the filename.  
-   影響 Impact: 腳本呼叫、IDE 搜尋與自動化流程容易失敗。  
-   建議 Suggested Fix: 重新命名為 `llama3_cs_lora.py` 並同步更新引用。
+2. `QLoRA/llama3_cs_lora .py` 檔名含空白。
+   影響：腳本呼叫、IDE 搜尋與自動化流程容易失敗。
+   建議：重新命名為 `llama3_cs_lora.py` 並同步更新引用。
 
-3. 部分檔案註解有編碼亂碼。  
-   Some script comments show encoding corruption.  
-   影響 Impact: 可讀性下降，維護與交接成本升高。  
-   建議 Suggested Fix: 全專案統一 UTF-8，並檢查編輯器儲存設定。
+3. 部分檔案註解有編碼亂碼。
+   影響：可讀性下降，維護與交接成本升高。
+   建議：全專案統一 UTF-8，並檢查編輯器儲存設定。
 
-4. 部分模型輸出資料夾中的 `README` 仍為自動模板。  
-   Some model output folders still contain auto-generated placeholder README files.  
-   影響 Impact: 模型來源、用途與限制資訊不足。  
-   建議 Suggested Fix: 補齊 model card（資料來源、用途、限制、授權）。
+4. 部分模型輸出資料夾中的 `README` 仍為自動模板。
+   影響：模型來源、用途與限制資訊不足。
+   建議：補齊 model card（資料來源、用途、限制、授權）。
 
 ### EasyEdit
-1. EasyEdit 子專案功能面廣，初次使用者容易在方法選擇上迷失。  
-   EasyEdit has broad method coverage, which may overwhelm first-time users.  
-   影響 Impact: 學習成本高，難以快速收斂到單一可復現流程。  
-   建議 Suggested Fix: 先固定單一路徑（例如 ROME + Llama3.2-3B）再擴展。
+1. EasyEdit 子專案功能面廣，初次使用者容易在方法選擇上迷失。
+   影響：學習成本高，難以快速收斂到單一可復現流程。
+   建議：先固定單一路徑（例如 ROME + Llama3.2-3B）再擴展。
 
 ## FAQ
 ### 1) QLoRA 與 EasyEdit 應該先做哪個？
-若目標是建立新任務能力，先做 QLoRA；若目標是修正特定知識點，先做 EasyEdit。  
-If your goal is adding new task capability, start with QLoRA; if your goal is correcting specific facts, start with EasyEdit.
+若目標是建立新任務能力，先做 QLoRA；若目標是修正特定知識點，先做 EasyEdit。
 
 ### 2) 為什麼 QLoRA 要混 general data？
-混合一般語料可降低 catastrophic forgetting，避免模型只會回答窄領域內容。  
-Mixing general data helps reduce catastrophic forgetting and preserves broader model behavior.
+混合一般語料可降低 catastrophic forgetting，避免模型只會回答窄領域內容。
 
 ### 3) 這個 repo 有包含正式 benchmark 結果嗎？
-目前 README 不包含正式 benchmark，僅提供可重現流程與結構化說明。  
-This README currently does not include formal benchmark results; it provides reproducible workflows and structured documentation.
+目前 README 不包含正式 benchmark，僅提供可重現流程與結構化說明。
 
 ### 4) 如果訓練後回答重複，優先調整什麼？
-先檢查 `repetition_penalty`、資料品質與 prompt 格式一致性，再看學習率與 epoch。  
-Check `repetition_penalty`, data quality, and prompt consistency first, then tune learning rate and epochs.
+先檢查 `repetition_penalty`、資料品質與 prompt 格式一致性，再看學習率與 epoch。
 
 ### 5) 可以把 QLoRA 產物再拿去做 EasyEdit 嗎？
-可以，常見做法是先 fine-tuning 取得任務能力，再針對錯誤知識點做 editing。  
-Yes. A common strategy is fine-tuning first for task capability, then editing for targeted factual fixes.
+可以，常見做法是先 fine-tuning 取得任務能力，再針對錯誤知識點做 editing。
 
 ### 6) 需要同時維護兩套流程嗎？
-若研究目標含「能力學習 + 事後知識修補」，兩套流程都值得保留。  
-If your research includes both capability learning and post-hoc knowledge repair, keeping both tracks is beneficial.
-
-## 授權與致謝 | License and Acknowledgements
-目前根目錄授權資訊待補 (`TBD`)。使用第三方模型與資料集時，請遵循其各自授權條款。  
-Root-level licensing information is currently pending (`TBD`). Follow each third-party model/dataset license when using them.
-
-感謝 Hugging Face、生態系套件（Transformers, PEFT, Datasets）與 EasyEdit 社群資源。  
-Acknowledgements to Hugging Face, ecosystem libraries (Transformers, PEFT, Datasets), and the EasyEdit community resources.
+若研究目標含「能力學習 + 事後知識修補」，兩套流程都值得保留。
