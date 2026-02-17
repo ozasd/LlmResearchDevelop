@@ -16,16 +16,16 @@ from prepare_data import get_general_dataset
 # 基本設定
 # ============================================================
 MODEL_ID   = "meta-llama/Llama-3.2-3B-Instruct"
-DATA_PATH  = "./ISO27001.json"
-OUT_DIR    = "./llama3_iso_lora"
+DATA_PATH  = "./customerService.json" ## 甜點客服資料集
+OUT_DIR    = "./llama3_cs_lora"       ## 輸出路徑改為 cs_lora
 
 MAX_LEN    = 384
 BATCH_SIZE = 1
 GRAD_ACC   = 8
-EPOCHS     = 3
+EPOCHS     = 3    # 客服對話通常比較簡單，3 Epochs 通常足夠
 LR         = 1e-4
 SEED       = 42
-MIX_RATIO  = 0.2  # 混合比例：加入 20% 的通用資料
+MIX_RATIO  = 0.2  # 混合 20% 通用資料維持對話流暢度
 
 # ============================================================
 # HF 登入
@@ -42,35 +42,35 @@ torch.manual_seed(SEED)
 # ============================================================
 print(">>> 步驟 1: 準備資料...")
 
-# A. 載入 ISO 專業資料
-ds_iso = load_dataset("json", data_files=DATA_PATH, split="train")
+# A. 載入甜點客服資料 (變數名稱由 ds_iso 改為 ds_cs)
+ds_cs = load_dataset("json", data_files=DATA_PATH, split="train")
 
-def format_iso(x):
+def format_cs(x):
     inst = (x.get("instruction") or "").strip()
     out  = (x.get("output") or "").strip()
     return f"### 指令:\n{inst}\n\n### 回答:\n{out}"
 
 # 格式化並只保留 text 欄位
-ds_iso = ds_iso.map(lambda x: {"text": format_iso(x)})
-ds_iso = ds_iso.remove_columns([c for c in ds_iso.column_names if c != "text"])
-print(f"   ISO 資料載入完成: {len(ds_iso)} 筆")
+ds_cs = ds_cs.map(lambda x: {"text": format_cs(x)})
+ds_cs = ds_cs.remove_columns([c for c in ds_cs.column_names if c != "text"])
+print(f"   甜點客服資料載入完成: {len(ds_cs)} 筆")
 
 # B. 載入通用資料 (透過 prepare_data.py)
-num_general = int(len(ds_iso) * MIX_RATIO)
-# 至少要有一筆，避免報錯 (如果 ISO 資料很少的話)
+# 客服機器人非常需要通用資料，不然會變得只會回答產品，不會寒暄
+num_general = int(len(ds_cs) * MIX_RATIO)
 num_general = max(1, num_general) 
 
 ds_gen = get_general_dataset(num_samples=num_general, seed=SEED)
 
 # C. 合併資料集
 if ds_gen:
-    ds = concatenate_datasets([ds_iso, ds_gen])
-    print(f"   資料合併完成。總筆數: {len(ds)} (ISO: {len(ds_iso)} + 通用: {len(ds_gen)})")
+    ds = concatenate_datasets([ds_cs, ds_gen])
+    print(f"   資料合併完成。總筆數: {len(ds)} (客服: {len(ds_cs)} + 通用: {len(ds_gen)})")
 else:
-    ds = ds_iso
-    print("   警告: 通用資料載入失敗，僅使用 ISO 資料。")
+    ds = ds_cs
+    print("   警告: 通用資料載入失敗，僅使用客服資料。")
 
-# D. 再次打亂 (重要！避免模型先學完一種才學另一種)
+# D. 再次打亂
 ds = ds.shuffle(seed=SEED)
 
 # ============================================================
@@ -162,26 +162,42 @@ trainer.train()
 
 model.save_pretrained(OUT_DIR)
 tokenizer.save_pretrained(OUT_DIR)
-print(f"LoRA 模型已儲存至: {OUT_DIR}")
+print(f"✅ LoRA 模型已儲存至: {OUT_DIR}")
 
 # =====================
 # 7) 測試推論
 # =====================
-print("\n===== 測試推論 =====")
+print("\n===== 測試推論 (甜點情境) =====")
 model.eval()
 
-test_prompt = "### 指令:\n什麼是 ISO 27001 變更管理？\n\n### 回答:\n"
+# 修改測試問題為甜點相關
+test_prompt = "### 指令:\n請問草莓蛋糕可以宅配嗎？如果運送壞掉怎麼辦？\n\n### 回答:\n"
 inputs = tokenizer(test_prompt, return_tensors="pt").to(model.device)
 
 with torch.no_grad():
     out = model.generate(
         **inputs,
         max_new_tokens=200,
-        temperature=0.7,
+        
+        # === 修改這裡 ===
+        temperature=0.6,      # 稍微調低一點，讓回答更穩定 (原本 0.7)
         top_p=0.9,
         do_sample=True,
+        
+        # ★ 關鍵參數：重複懲罰
+        repetition_penalty=1.2,  # 設定 1.1 ~ 1.2 都可以，強迫它不講重複的話
+        
         eos_token_id=tokenizer.eos_token_id,
-        pad_token_id=tokenizer.pad_token_id,
+        pad_token_id=tokenizer.eos_token_id,
     )
 
-print(tokenizer.decode(out[0], skip_special_tokens=True))
+# 這裡建議加上 .split("### 回答:")[-1]，只印出回答部分，版面比較乾淨
+response = tokenizer.decode(out[0], skip_special_tokens=True)
+print(f"Q: {config['test_prompt']}")
+# print(f"A: {response}") # 原本的印法
+
+# 優化後的印法 (只印出生成的後半段)
+if "### 回答:" in response:
+    print(f"A: {response.split('### 回答:')[-1].strip()}")
+else:
+    print(f"A: {response}")
