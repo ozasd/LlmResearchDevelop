@@ -71,10 +71,8 @@ LLM_research/
 
 ## 執行方式
 
-### 1. 建立環境與安裝套件
+### 1. 安裝套件
 ```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
 pip install torch transformers python-dotenv huggingface_hub accelerate bitsandbytes
 ```
 
