@@ -31,3 +31,6 @@ merge_results/
 *.safetensors
 *.bin
 *.pth
+
+EasyEdit
+QLoRA

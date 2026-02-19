@@ -1,5 +1,5 @@
 """
-Script: reason_beam_select.py
+Script: BSR.py
 Description: Listwise Verifier (Selection Mode) with Structured Output
 Optimization: Ensure Output = Process (Steps) + Conclusion (Final)
 """
