@@ -23,13 +23,11 @@
 
 ```text
 LLM_research/
-├─ README.md
 ├─ BeamSearchForReasoning/
 │  ├─ BSR.py
 │  ├─ output.txt
 │  └─ output2.txt
-├─ QLoRA/
-└─ EasyEdit/
+└─ README.md
 ```
 
 ## BeamSearchForReasoning 研究路線
