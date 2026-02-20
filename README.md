@@ -1,2 +1,2 @@
 # llm_research_demo
-LLM 相關研究
+RAG 相關研究
