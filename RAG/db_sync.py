@@ -15,19 +15,19 @@ import pandas as pd
 import chromadb
 from sentence_transformers import SentenceTransformer
 
+
+
 DOC_FILE = "data.csv"
 EMB_FILE = "embeddings.csv"
 PERSIST_DIR = "./chroma_db"
 COLLECTION_NAME = "universal_docs"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PERSIST_DIR = os.path.join(BASE_DIR, "chroma_db")
 
+print("Using DB path:", PERSIST_DIR)
 embed_model = SentenceTransformer("BAAI/bge-large-zh")
 
-client = chromadb.Client(
-    settings=chromadb.Settings(
-        persist_directory=PERSIST_DIR
-    )
-)
-
+client = chromadb.PersistentClient(path=PERSIST_DIR)
 collection = client.get_or_create_collection(COLLECTION_NAME)
 
 if not os.path.exists(DOC_FILE):
